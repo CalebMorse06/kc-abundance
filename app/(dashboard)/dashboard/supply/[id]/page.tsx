@@ -34,6 +34,9 @@ export default function SupplyDetailPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [escalatedPopup, setEscalatedPopup] = useState<{ id: string; zip: string | null; description: string | null; status: string } | null>(null);
   const [escalating, setEscalating] = useState(false);
+  const [showCreateBatch, setShowCreateBatch] = useState(false);
+  const [creatingBatch, setCreatingBatch] = useState(false);
+  const [batchForm, setBatchForm] = useState({ description: '', quantity_lbs: '', food_type: 'produce', requires_cold: false });
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -67,6 +70,29 @@ export default function SupplyDetailPage() {
     } finally {
       setEscalating(false);
     }
+  };
+
+  const createBatch = async () => {
+    if (!batchForm.quantity_lbs || !batchForm.description) return;
+    setCreatingBatch(true);
+    const supabase = createClient();
+    const spoilage_deadline = alert?.perishability_hours && alert?.created_at
+      ? new Date(new Date(alert.created_at).getTime() + alert.perishability_hours * 3600000).toISOString()
+      : null;
+    await supabase.from('food_batches').insert({
+      alert_id: id,
+      description: batchForm.description,
+      quantity_lbs: Number(batchForm.quantity_lbs),
+      food_type: batchForm.food_type,
+      requires_cold: batchForm.requires_cold,
+      status: 'unallocated',
+      perishability_hours: alert?.perishability_hours ?? null,
+      spoilage_deadline,
+    });
+    setBatchForm({ description: '', quantity_lbs: '', food_type: 'produce', requires_cold: false });
+    setShowCreateBatch(false);
+    setCreatingBatch(false);
+    await load();
   };
 
   const runAllocationScoring = async (batch: FoodBatch) => {
@@ -242,12 +268,90 @@ export default function SupplyDetailPage() {
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Food Batches</h2>
-          <span className="text-xs text-gray-400">{batches.length} batch{batches.length !== 1 ? 'es' : ''}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">{batches.length} batch{batches.length !== 1 ? 'es' : ''}</span>
+            {alert.status !== 'resolved' && (
+              <button
+                onClick={() => setShowCreateBatch(v => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors"
+                style={{ background: 'var(--brand-teal)' }}
+              >
+                <Package className="h-3.5 w-3.5" />
+                {showCreateBatch ? 'Cancel' : 'Create Batch'}
+              </button>
+            )}
+          </div>
         </div>
 
-        {batches.length === 0 ? (
+        {/* Inline create form */}
+        {showCreateBatch && (
+          <div className="p-5 border-b border-gray-100 bg-gray-50 space-y-3">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">New Batch</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Description</label>
+                <input
+                  type="text"
+                  value={batchForm.description}
+                  onChange={e => setBatchForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="e.g. Fresh tomatoes and peppers"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Quantity (lbs)</label>
+                <input
+                  type="number"
+                  value={batchForm.quantity_lbs}
+                  onChange={e => setBatchForm(f => ({ ...f, quantity_lbs: e.target.value }))}
+                  placeholder={String(alert.quantity_lbs ?? 0)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Food Type</label>
+                <select
+                  value={batchForm.food_type}
+                  onChange={e => setBatchForm(f => ({ ...f, food_type: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="produce">Produce</option>
+                  <option value="dairy">Dairy</option>
+                  <option value="dry_goods">Dry Goods</option>
+                  <option value="prepared">Prepared Food</option>
+                  <option value="protein">Protein</option>
+                  <option value="bakery">Bakery</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 pt-5">
+                <input
+                  type="checkbox"
+                  id="requires_cold"
+                  checked={batchForm.requires_cold}
+                  onChange={e => setBatchForm(f => ({ ...f, requires_cold: e.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300 text-green-600"
+                />
+                <label htmlFor="requires_cold" className="text-sm text-gray-700 flex items-center gap-1">
+                  <Snowflake className="h-3.5 w-3.5 text-blue-400" />
+                  Requires Cold Storage
+                </label>
+              </div>
+            </div>
+            <button
+              onClick={createBatch}
+              disabled={creatingBatch || !batchForm.description || !batchForm.quantity_lbs}
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 transition-colors"
+              style={{ background: 'var(--brand-orange)' }}
+            >
+              {creatingBatch ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+              {creatingBatch ? 'Creating…' : 'Create & Score'}
+            </button>
+          </div>
+        )}
+
+        {batches.length === 0 && !showCreateBatch ? (
           <div className="p-8 text-center text-gray-400 text-sm">
-            No batches created for this alert yet
+            No batches yet — click <strong>Create Batch</strong> above to split this alert into allocatable units.
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
