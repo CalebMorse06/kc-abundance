@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Abundance-KC — Technical Write-Up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy:   #1B3A52;
+    --navy2:  #112839;
+    --orange: #F5A623;
+    --teal:   #2D8C7A;
+    --sky:    #4A90C4;
+    --sage:   #6BA87A;
+    --cream:  #E8C98A;
+    --off-white: #F7F4EF;
+    --mid:    #8A9BAD;
+    --ink:    #1a1a1a;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    background: var(--off-white);
+    color: var(--ink);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    background: var(--navy2);
+    color: white;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    min-height: 480px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 60% at 80% 30%, rgba(45,140,122,0.22) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 50% at 10% 80%, rgba(245,166,35,0.12) 0%, transparent 70%),
+      linear-gradient(160deg, #112839 0%, #1B3A52 60%, #0e2030 100%);
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74,144,196,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,144,196,0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 72px 64px 56px;
+    max-width: 960px;
+  }
+
+  .tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--orange);
+    border: 1px solid rgba(245,166,35,0.35);
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(42px, 6vw, 72px);
+    font-weight: 900;
+    line-height: 1.05;
+    color: white;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+
+  h1 span { color: var(--orange); }
+
+  .hero-sub {
+    font-size: 17px;
+    color: rgba(255,255,255,0.6);
+    max-width: 540px;
+    font-weight: 300;
+    line-height: 1.6;
+    margin-bottom: 40px;
+  }
+
+  .stack-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 100px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.75);
+    letter-spacing: 0.06em;
+  }
+
+  .pill.highlight { background: rgba(45,140,122,0.25); border-color: rgba(45,140,122,0.5); color: #7fd4c5; }
+
+  /* ─── LAYOUT ─── */
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  .content {
+    padding: 72px 0 96px;
+  }
+
+  /* ─── SECTION TITLES ─── */
+  .section {
+    margin-bottom: 72px;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(45,140,122,0.25);
+    max-width: 120px;
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(26px, 4vw, 36px);
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--navy);
+    margin-bottom: 20px;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 10px;
+    margin-top: 32px;
+  }
+
+  p {
+    font-size: 16px;
+    color: #3a4a58;
+    margin-bottom: 16px;
+    line-height: 1.75;
+  }
+
+  /* ─── OVERVIEW CARDS ─── */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .overview-card {
+    background: white;
+    border: 1px solid rgba(27,58,82,0.10);
+    border-radius: 8px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .overview-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .overview-card.c-teal::before  { background: var(--teal); }
+  .overview-card.c-orange::before { background: var(--orange); }
+  .overview-card.c-sky::before   { background: var(--sky); }
+  .overview-card.c-sage::before  { background: var(--sage); }
+
+  .oc-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .c-teal  .oc-num { color: var(--teal); }
+  .c-orange .oc-num { color: var(--orange); }
+  .c-sky   .oc-num { color: var(--sky); }
+  .c-sage  .oc-num { color: var(--sage); }
+
+  .oc-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+
+  .oc-desc {
+    font-size: 13px;
+    color: var(--mid);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* ─── FORMULA BLOCKS ─── */
+  .formula-box {
+    background: var(--navy);
+    border-radius: 8px;
+    padding: 28px 32px;
+    margin: 24px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .formula-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+    background: var(--orange);
+  }
+
+  .formula-box pre {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.9;
+    white-space: pre-wrap;
+    margin: 0;
+  }
+
+  .formula-box .comment {
+    color: rgba(245,166,35,0.6);
+  }
+
+  .formula-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--orange);
+    margin-bottom: 14px;
+  }
+
+  /* ─── WEIGHT TABLE ─── */
+  .weight-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 14px;
+  }
+
+  .weight-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mid);
+    text-align: left;
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(27,58,82,0.12);
+  }
+
+  .weight-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(27,58,82,0.06);
+    color: #3a4a58;
+    vertical-align: middle;
+  }
+
+  .weight-table tr:last-child td { border-bottom: none; }
+
+  .weight-table tr:hover td { background: rgba(27,58,82,0.02); }
+
+  .w-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .w-bar {
+    height: 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .w-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--navy);
+    font-weight: 500;
+  }
+
+  /* ─── TECH TABLE ─── */
+  .tech-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 14px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(27,58,82,0.10);
+  }
+
+  .tech-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mid);
+    text-align: left;
+    padding: 12px 20px;
+    background: rgba(27,58,82,0.03);
+    border-bottom: 1px solid rgba(27,58,82,0.10);
+  }
+
+  .tech-table td {
+    padding: 11px 20px;
+    border-bottom: 1px solid rgba(27,58,82,0.06);
+    color: #3a4a58;
+  }
+
+  .tech-table tr:last-child td { border-bottom: none; }
+
+  .tech-table .layer { font-weight: 500; color: var(--navy); font-size: 13px; }
+
+  .tech-table code {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    background: rgba(27,58,82,0.06);
+    padding: 2px 7px;
+    border-radius: 3px;
+    color: var(--navy);
+  }
+
+  /* ─── CALLOUT ─── */
+  .callout {
+    background: rgba(45,140,122,0.06);
+    border: 1px solid rgba(45,140,122,0.20);
+    border-left: 3px solid var(--teal);
+    border-radius: 4px;
+    padding: 18px 22px;
+    margin: 20px 0;
+    font-size: 14px;
+    color: #2a4a43;
+    line-height: 1.65;
+  }
+
+  .callout strong { color: var(--teal); font-weight: 500; }
+
+  /* ─── AI CARDS ─── */
+  .ai-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 24px;
+  }
+
+  .ai-card {
+    background: white;
+    border: 1px solid rgba(27,58,82,0.10);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .ai-endpoint {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--sky);
+    margin-bottom: 8px;
+  }
+
+  .ai-card h4 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+
+  .ai-card p {
+    font-size: 12px;
+    color: var(--mid);
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  /* ─── FLOW ─── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 28px 0;
+    position: relative;
+  }
+
+  .flow::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 24px;
+    bottom: 24px;
+    width: 1px;
+    background: rgba(27,58,82,0.14);
+  }
+
+  .flow-step {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 14px 0;
+  }
+
+  .flow-dot {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid rgba(27,58,82,0.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--navy);
+    position: relative;
+    z-index: 1;
+  }
+
+  .flow-step.active .flow-dot {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: white;
+  }
+
+  .flow-body { padding-top: 8px; }
+
+  .flow-body strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 3px;
+  }
+
+  .flow-body span {
+    font-size: 13px;
+    color: var(--mid);
+  }
+
+  /* ─── PATTERNS ─── */
+  .pattern-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 20px;
+  }
+
+  .pattern-card {
+    background: white;
+    border: 1px solid rgba(27,58,82,0.10);
+    border-radius: 8px;
+    padding: 20px 22px;
+  }
+
+  .pattern-card h4 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--navy);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pattern-card h4 span {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: rgba(27,58,82,0.07);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+  }
+
+  .pattern-card p {
+    font-size: 13px;
+    color: var(--mid);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    border: none;
+    border-top: 1px solid rgba(27,58,82,0.10);
+    margin: 56px 0;
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    background: var(--navy2);
+    color: rgba(255,255,255,0.35);
+    text-align: center;
+    padding: 28px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 680px) {
+    .hero-content { padding: 48px 28px 40px; }
+    .container { padding: 0 20px; }
+    .overview-grid { grid-template-columns: 1fr; }
+    .ai-grid { grid-template-columns: 1fr; }
+    .pattern-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="tag">Technical Write-Up</div>
+    <h1>Abundance<span>-KC</span></h1>
+    <p class="hero-sub">A food access coordination platform for Kansas City. Bridges food distribution networks with residents through a real-time operator dashboard and a public-facing resident portal.</p>
+    <div class="stack-pills">
+      <span class="pill">Next.js 16</span>
+      <span class="pill">TypeScript</span>
+      <span class="pill highlight">Supabase</span>
+      <span class="pill">Tailwind CSS 4</span>
+      <span class="pill highlight">Claude Haiku</span>
+      <span class="pill">Mapbox GL</span>
+      <span class="pill">Resend</span>
+      <span class="pill">Radix UI</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── CONTENT ── -->
+<div class="container">
+<div class="content">
+
+  <!-- OVERVIEW -->
+  <div class="section">
+    <div class="section-label">Overview</div>
+    <h2>What it is and why it exists</h2>
+    <p>Food insecurity in Kansas City is not a supply problem in isolation. It is a coordination problem: food batches arrive, spoil windows are narrow, and the neighborhoods with the highest need are not always the ones operators reach first. Abundance-KC closes that gap with a scoring-driven allocation engine, real-time dashboard, and a bilingual public portal that does not require residents to have an account to get help.</p>
+    <p>The system has two primary users: <strong>operators</strong> (food bank staff, dispatchers, pantry managers) who confirm dispatches and manage supply alerts, and <strong>residents</strong> who can browse sites on a map, request help, and vote on community priorities by ZIP code.</p>
+
+    <div class="overview-grid">
+      <div class="overview-card c-teal">
+        <div class="oc-num">7</div>
+        <div class="oc-label">Site types supported</div>
+        <p class="oc-desc">Food banks, pantries, mobile units, shelters, schools, gardens, pop-ups.</p>
+      </div>
+      <div class="overview-card c-orange">
+        <div class="oc-num">0.4×</div>
+        <div class="oc-label">Perishability escalation threshold</div>
+        <p class="oc-desc">Batches escalate at 40% of spoilage window, leaving real logistics lead time.</p>
+      </div>
+      <div class="overview-card c-sky">
+        <div class="oc-num">EN / ES</div>
+        <div class="oc-label">Bilingual by default</div>
+        <p class="oc-desc">Language state is cookie-persisted and drives allocation scoring, not just labels.</p>
+      </div>
+      <div class="overview-card c-sage">
+        <div class="oc-num">Graceful</div>
+        <div class="oc-label">AI degradation</div>
+        <p class="oc-desc">App runs fully without ANTHROPIC_API_KEY. Claude is additive, not load-bearing.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- STACK -->
+  <div class="section">
+    <div class="section-label">Stack</div>
+    <h2>Technology choices</h2>
+    <p>The stack is intentionally constrained. No global state manager, no ORM, no separate backend service. Supabase handles auth, database, and realtime subscriptions. Business logic lives in <code style="font-family:'DM Mono',monospace;font-size:13px;background:rgba(27,58,82,0.07);padding:2px 7px;border-radius:3px;color:var(--navy)">lib/</code>; route handlers are thin orchestrators only.</p>
+
+    <table class="tech-table">
+      <thead>
+        <tr><th>Layer</th><th>Technology</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="layer">Framework</td><td><code>Next.js 16.2.1</code> — App Router</td></tr>
+        <tr><td class="layer">Language</td><td><code>TypeScript 5</code> — strict mode, no <code>any</code> in prod</td></tr>
+        <tr><td class="layer">UI / Styling</td><td><code>Tailwind CSS 4</code> + Radix UI + shadcn-style primitives</td></tr>
+        <tr><td class="layer">Backend / DB</td><td><code>Supabase</code> — Postgres, Auth, Realtime</td></tr>
+        <tr><td class="layer">Maps</td><td><code>Mapbox GL</code> via react-map-gl</td></tr>
+        <tr><td class="layer">AI</td><td><code>claude-haiku-4-5</code> — speed and cost-efficient</td></tr>
+        <tr><td class="layer">Email</td><td><code>Resend</code> — transactional help-request alerts</td></tr>
+        <tr><td class="layer">Fonts</td><td>Plus Jakarta Sans (headings) · Inter (body)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- SCORING -->
+  <div class="section">
+    <div class="section-label">Core Algorithm</div>
+    <h2>Neighborhood need scoring</h2>
+    <p>A weighted composite of five signals computes a 0–100 need score per ZIP code. The formula is deterministic, transparent, and operator-auditable — not a black box.</p>
+
+    <div class="formula-box">
+      <div class="formula-title">src/lib/scoring/need.ts</div>
+      <pre>need_score =
+  poverty_rate          × 0.25
+  + food_insecurity_pct × 0.25
+  + no_car_pct          × 0.20
+  + store_closure_impact× 0.15  <span class="comment">// people_impacted / 50 000</span>
+  + distress_calls_norm × 0.10  <span class="comment">// calls / 500</span>
+  + food_desert_flag    × 0.05
+
+× 1.15 if harvest_priority ZIP  <span class="comment">// capped at 100</span></pre>
+    </div>
+
+    <p>Poverty rate alone under-counts households that are food-insecure because of mobility, language, or supply-side gaps. Harvest priority ZIPs get a 15% multiplier because fresh produce spoils faster and those neighborhoods have the least access to refrigeration or transportation.</p>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ALLOCATION -->
+  <div class="section">
+    <div class="section-label">Allocation Engine</div>
+    <h2>How food batches get assigned</h2>
+    <p>When a batch arrives, every eligible site is scored against it. The algorithm weights community need highest because that is the mission, followed by cold-storage compatibility because wasted perishables are an irreversible failure.</p>
+
+    <div class="formula-box">
+      <div class="formula-title">src/lib/scoring/allocation.ts</div>
+      <pre>site_score =
+  neighborhood_need_score × 0.30
+  + cold_storage_match    × 0.25  <span class="comment">// hard 0 if batch needs cold, site has none</span>
+  + language_match        × 0.20  <span class="comment">// 1.0 if site serves ZIP's primary language</span>
+  + capacity_available    × 0.15  <span class="comment">// normalized remaining lbs</span>
+  + transit_accessible    × 0.10  <span class="comment">// bus stop within walking distance</span></pre>
+    </div>
+
+    <table class="weight-table">
+      <thead>
+        <tr><th>Signal</th><th>Weight</th><th style="width:200px">Rationale</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Neighborhood need</td>
+          <td>
+            <div class="w-bar-wrap">
+              <div class="w-bar" style="width:90px;background:var(--teal)"></div>
+              <span class="w-val">30%</span>
+            </div>
+          </td>
+          <td>Mission-critical signal</td>
+        </tr>
+        <tr>
+          <td>Cold storage match</td>
+          <td>
+            <div class="w-bar-wrap">
+              <div class="w-bar" style="width:75px;background:var(--orange)"></div>
+              <span class="w-val">25%</span>
+            </div>
+          </td>
+          <td>Spoilage is irreversible</td>
+        </tr>
+        <tr>
+          <td>Language match</td>
+          <td>
+            <div class="w-bar-wrap">
+              <div class="w-bar" style="width:60px;background:var(--sky)"></div>
+              <span class="w-val">20%</span>
+            </div>
+          </td>
+          <td>Inaccessibility without communication</td>
+        </tr>
+        <tr>
+          <td>Capacity available</td>
+          <td>
+            <div class="w-bar-wrap">
+              <div class="w-bar" style="width:45px;background:var(--sage)"></div>
+              <span class="w-val">15%</span>
+            </div>
+          </td>
+          <td>Normalized remaining pounds</td>
+        </tr>
+        <tr>
+          <td>Transit accessible</td>
+          <td>
+            <div class="w-bar-wrap">
+              <div class="w-bar" style="width:30px;background:var(--mid)"></div>
+              <span class="w-val">10%</span>
+            </div>
+          </td>
+          <td>Bus stop within walking distance</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>Sites are ranked and presented to operators with human-readable rationale. Claude generates a 1–2 sentence plain-English explanation of the top pick. Operators confirm before dispatch fires.</p>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ESCALATION -->
+  <div class="section">
+    <div class="section-label">Escalation Engine</div>
+    <h2>Perishable batch auto-escalation</h2>
+    <p>Batches approaching spoilage escalate automatically. The threshold is tuned to leave enough logistics lead time without triggering false alarms.</p>
+
+    <div class="formula-box">
+      <div class="formula-title">src/lib/escalation.ts</div>
+      <pre>escalation_threshold = perishability_hours × 0.4
+
+<span class="comment">// If a batch will expire within this window and is still unallocated:</span>
+1. Select the highest-need ZIP in the batch's impacted zone
+2. Create a popup_event tied to that alert
+3. Notify operators via realtime dashboard channel</pre>
+    </div>
+
+    <div class="callout">
+      <strong>Manual override available</strong> via <code style="font-family:'DM Mono',monospace;font-size:12px">POST /api/escalate?alert_id=…</code> — the 40% threshold is configurable per deployment.
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- REALTIME -->
+  <div class="section">
+    <div class="section-label">Real-Time Architecture</div>
+    <h2>Push-based dashboard updates</h2>
+    <p>The operator dashboard uses Supabase Realtime channel subscriptions instead of polling. Operators need sub-second awareness of new perishable alerts. HTTP polling introduces lag that is unacceptable when spoilage windows are measured in hours.</p>
+
+    <div class="formula-box">
+      <div class="formula-title">src/app/(dashboard)/dashboard/page.tsx</div>
+      <pre>const channel = supabase
+  .channel('supply_alerts_changes')
+  .on('postgres_changes', {
+    event: 'INSERT', schema: 'public', table: 'supply_alerts'
+  }, (payload) => {
+    setAlerts(prev => [payload.new as SupplyAlert, ...prev])
+  })
+  .subscribe();</pre>
+    </div>
+
+    <div class="callout">
+      Supabase Realtime subscriptions are push-based and included in the free tier. No additional infrastructure required.
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- AI -->
+  <div class="section">
+    <div class="section-label">AI Integration</div>
+    <h2>Claude as explainer, not decision-maker</h2>
+    <p>The core allocation algorithm is deterministic code. Claude is additive — it explains decisions in plain language and drafts outreach, but has no bearing on which site gets food. This keeps the system auditable and fully functional without an API key.</p>
+
+    <div class="ai-grid">
+      <div class="ai-card">
+        <div class="ai-endpoint">POST /api/ai/explain</div>
+        <h4>Allocation rationale</h4>
+        <p>Takes allocation + scores, returns a 1–2 sentence plain-English explanation of why the top site was selected.</p>
+      </div>
+      <div class="ai-card">
+        <div class="ai-endpoint">POST /api/ai/outreach</div>
+        <h4>Bilingual outreach drafts</h4>
+        <p>Takes site and event details, returns a bilingual message draft for community outreach communications.</p>
+      </div>
+      <div class="ai-card">
+        <div class="ai-endpoint">Inline in /api/ingest</div>
+        <h4>Alert parsing</h4>
+        <p>Extracts structured fields (quantity, perishability) from freeform alert description text on ingest.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- DATA FLOW -->
+  <div class="section">
+    <div class="section-label">Data Flow</div>
+    <h2>End-to-end dispatch lifecycle</h2>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-dot">1</div>
+        <div class="flow-body">
+          <strong>Ingest</strong>
+          <span>Challenge API data pulled via <code style="font-family:'DM Mono',monospace;font-size:12px;background:rgba(27,58,82,0.07);padding:1px 6px;border-radius:3px">/api/ingest</code>, scored, and upserted into Supabase. TTL-cached at the API client layer to avoid rate limit issues.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">2</div>
+        <div class="flow-body">
+          <strong>Alert arrives</strong>
+          <span>New supply alert triggers Realtime subscription on the operator dashboard. Escalation engine checks perishability threshold in parallel.</span>
+        </div>
+      </div>
+      <div class="flow-step active">
+        <div class="flow-dot">3</div>
+        <div class="flow-body">
+          <strong>Allocation scored</strong>
+          <span>Every eligible site is scored against the batch. Top candidates presented to the operator with weights and Claude-generated rationale.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">4</div>
+        <div class="flow-body">
+          <strong>Operator confirms</strong>
+          <span><code style="font-family:'DM Mono',monospace;font-size:12px;background:rgba(27,58,82,0.07);padding:1px 6px;border-radius:3px">POST /api/dispatch/[id]/confirm</code> — allocation record updated, analytics event logged.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- PATTERNS -->
+  <div class="section">
+    <div class="section-label">Design Decisions</div>
+    <h2>Notable engineering patterns</h2>
+
+    <div class="pattern-grid">
+      <div class="pattern-card">
+        <h4><span>→</span> Algorithm over AI</h4>
+        <p>Scoring and allocation are deterministic and auditable. Claude handles explanation and messaging only — never a decision path.</p>
+      </div>
+      <div class="pattern-card">
+        <h4><span>→</span> No global state manager</h4>
+        <p>Supabase client + React Context for language + local useState is sufficient. No Redux or Zustand added.</p>
+      </div>
+      <div class="pattern-card">
+        <h4><span>→</span> Thin API routes</h4>
+        <p>Business logic lives in <code style="font-family:'DM Mono',monospace;font-size:12px;background:rgba(27,58,82,0.07);padding:1px 5px;border-radius:3px">lib/</code>. Route handlers are orchestrators only — easy to test and reason about.</p>
+      </div>
+      <div class="pattern-card">
+        <h4><span>→</span> Cookies over URL params</h4>
+        <p>Language state persists across navigation without encoding it into every URL, and is readable server-side for SSR.</p>
+      </div>
+      <div class="pattern-card">
+        <h4><span>→</span> Accessibility first</h4>
+        <p>Radix UI primitives for keyboard nav, a TTS endpoint for screen-reader fallback, barrier-aware help request form fields.</p>
+      </div>
+      <div class="pattern-card">
+        <h4><span>→</span> TypeScript end-to-end</h4>
+        <p>All entities typed in <code style="font-family:'DM Mono',monospace;font-size:12px;background:rgba(27,58,82,0.07);padding:1px 5px;border-radius:3px">types/index.ts</code>. No <code style="font-family:'DM Mono',monospace;font-size:12px;background:rgba(27,58,82,0.07);padding:1px 5px;border-radius:3px">any</code> in production code.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<footer>
+  Abundance-KC · Technical Write-Up · Kansas City Food Access Platform
+</footer>
+
+</body>
+</html>
