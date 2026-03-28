@@ -9,7 +9,8 @@ import { getLangFromCookie } from '@/lib/i18n';
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
-  const isEs = getLangFromCookie(cookieStore.toString()) === 'es';
+  const langCookie = cookieStore.get('lang')?.value ?? null;
+  const isEs = getLangFromCookie(langCookie) === 'es';
   return (
     <LangProviderWrapper>
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--background)' }}>
