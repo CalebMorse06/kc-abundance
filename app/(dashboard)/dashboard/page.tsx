@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle, MapPin, Package, TrendingUp,
-  RefreshCw, Activity, Clock
+  RefreshCw, Activity, Clock, Sparkles, Loader2, ChevronRight
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { AlertBanner } from '@/components/AlertBanner';
@@ -58,6 +58,8 @@ export default function DashboardPage() {
   const [recentEvents, setRecentEvents] = useState<AnalyticsEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [insights, setInsights] = useState<{ summary: string; insights: Array<{ priority: string; title: string; detail: string; action: string }>; meta?: Record<string, number> } | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -99,6 +101,16 @@ export default function DashboardPage() {
     setLoading(false);
     setLastRefresh(new Date());
   }, []);
+
+  const loadInsights = async () => {
+    setInsightsLoading(true);
+    try {
+      const res = await fetch('/api/ai/insights');
+      if (res.ok) setInsights(await res.json());
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -163,6 +175,71 @@ export default function DashboardPage() {
         <StatCard label="Sites Covered" value={stats.sitesCovered} icon={MapPin} color="text-green-600" sub="Active food sites" />
         <StatCard label="Lbs This Week" value={stats.lbsThisWeek > 0 ? stats.lbsThisWeek.toLocaleString() : '750'} icon={Package} color="text-blue-600" sub="Distributed" />
         <StatCard label="Critical ZIPs" value={stats.criticalZips > 0 ? stats.criticalZips : '3'} icon={TrendingUp} color="text-orange-600" sub="Need score ≥ 70" />
+      </div>
+
+      {/* AI Insights panel */}
+      <div className="rounded-xl border border-purple-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-purple-100 flex items-center justify-between" style={{ background: 'linear-gradient(to right, #faf5ff, #f5f3ff)' }}>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-purple-600" />
+            <h2 className="font-semibold text-gray-900">AI Operations Advisor</h2>
+            <span className="text-xs text-purple-500 bg-purple-100 rounded-full px-2 py-0.5">GPT-4o mini</span>
+          </div>
+          <button
+            onClick={loadInsights}
+            disabled={insightsLoading}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-60"
+            style={{ background: '#7c3aed' }}
+          >
+            {insightsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {insightsLoading ? 'Analyzing…' : insights ? 'Refresh Analysis' : 'Run Analysis'}
+          </button>
+        </div>
+
+        {!insights && !insightsLoading && (
+          <div className="p-8 text-center text-gray-400 text-sm">
+            <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            <p>Click <strong>Run Analysis</strong> to get AI-powered recommendations based on your live data, allocation weights, and neighborhood need scores.</p>
+          </div>
+        )}
+
+        {insightsLoading && (
+          <div className="p-8 text-center">
+            <Loader2 className="h-6 w-6 animate-spin text-purple-500 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Analyzing supply data, coverage gaps, and allocation weights…</p>
+          </div>
+        )}
+
+        {insights && !insightsLoading && (
+          <div className="p-5 space-y-4">
+            <p className="text-sm text-gray-700 bg-purple-50 rounded-lg px-4 py-3 border border-purple-100">{insights.summary}</p>
+            <div className="space-y-3">
+              {insights.insights.map((ins, i) => (
+                <div key={i} className={`rounded-lg border p-4 ${
+                  ins.priority === 'critical' ? 'border-red-200 bg-red-50' :
+                  ins.priority === 'high' ? 'border-orange-200 bg-orange-50' :
+                  'border-blue-200 bg-blue-50'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <span className={`text-xs font-bold uppercase rounded-full px-2 py-0.5 flex-shrink-0 mt-0.5 ${
+                      ins.priority === 'critical' ? 'bg-red-200 text-red-700' :
+                      ins.priority === 'high' ? 'bg-orange-200 text-orange-700' :
+                      'bg-blue-200 text-blue-700'
+                    }`}>{ins.priority}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm">{ins.title}</p>
+                      <p className="text-sm text-gray-600 mt-1">{ins.detail}</p>
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <ChevronRight className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                        <p className="text-xs font-medium text-gray-700">{ins.action}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
