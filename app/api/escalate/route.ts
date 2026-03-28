@@ -81,7 +81,7 @@ export async function POST(req: Request) {
           description,
           description_es,
           scheduled_at: now.toISOString(),
-          ends_at: batch.spoilage_deadline ?? new Date(now.getTime() + hoursLeft * 3600000).toISOString(),
+          ends_at: batch?.spoilage_deadline ?? new Date(now.getTime() + hoursLeft * 3600000).toISOString(),
           status: 'active',
           triggered_by_alert_id: alert_id,
         })

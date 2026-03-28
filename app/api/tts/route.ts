@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Rachel — eleven_multilingual_v2 — clear, warm, natural in Spanish
-const VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+// Sarah — eleven_multilingual_v2 — warm, natural bilingual voice
+const VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';
 const MODEL_ID = 'eleven_multilingual_v2';
 
 export async function POST(req: NextRequest) {
@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('ElevenLabs error:', err);
-    return NextResponse.json({ error: 'TTS generation failed' }, { status: 500 });
+    console.error('ElevenLabs error status:', res.status, 'body:', err);
+    return NextResponse.json({ error: 'TTS generation failed', detail: err, status: res.status }, { status: 500 });
   }
 
   const audio = await res.arrayBuffer();
