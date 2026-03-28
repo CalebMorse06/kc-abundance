@@ -34,11 +34,16 @@ export async function POST(req: Request) {
         supabase.from('neighborhood_scores').select('zip, need_score').order('need_score', { ascending: false }),
       ]);
 
-      if (!alert || !batches || batches.length === 0) {
-        return NextResponse.json({ success: false, error: 'Alert or unallocated batch not found' }, { status: 404 });
+      if (!alert) {
+        return NextResponse.json({ success: false, error: 'Alert not found' }, { status: 404 });
       }
 
-      const batch = batches[0];
+      // Use batch data if available, otherwise fall back to alert-level fields
+      const batch = batches?.[0] ?? null;
+      const quantityLbs: number = batch?.quantity_lbs ?? (alert as unknown as Record<string, number>).quantity_lbs ?? 0;
+      const perishabilityHours: number = batch?.perishability_hours ?? (alert as unknown as Record<string, number>).perishability_hours ?? 48;
+      const requiresCold: boolean = batch?.requires_cold ?? (alert as unknown as Record<string, boolean>).requires_cold ?? false;
+
       const scoreByZip = new Map<string, number>((scores ?? []).map((s) => [s.zip, s.need_score ?? 0]));
       const impactedZips: string[] = alert.impacted_zips ?? [];
 
@@ -53,20 +58,20 @@ export async function POST(req: Request) {
       }
 
       const now = new Date();
-      const deadline = batch.spoilage_deadline ? new Date(batch.spoilage_deadline) : null;
-      const hoursLeft = deadline ? Math.max(1, Math.ceil((deadline.getTime() - now.getTime()) / 3600000)) : (batch.perishability_hours ?? 48);
-      const coldNote = batch.requires_cold ? ' Refrigeration available on-site.' : '';
+      const deadline = batch?.spoilage_deadline ? new Date(batch.spoilage_deadline) : null;
+      const hoursLeft = deadline ? Math.max(1, Math.ceil((deadline.getTime() - now.getTime()) / 3600000)) : perishabilityHours;
+      const coldNote = requiresCold ? ' Refrigeration available on-site.' : '';
 
       const description =
-        `EMERGENCY: ${batch.quantity_lbs.toLocaleString()} lbs of fresh produce available ` +
+        `EMERGENCY: ${quantityLbs.toLocaleString()} lbs of fresh produce available ` +
         `for immediate free distribution in ZIP ${targetZip}. Must reach families within ` +
         `${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''} before spoilage.${coldNote} No ID required.`;
 
       const description_es =
-        `EMERGENCIA: ${batch.quantity_lbs.toLocaleString()} libras de productos frescos disponibles ` +
+        `EMERGENCIA: ${quantityLbs.toLocaleString()} libras de productos frescos disponibles ` +
         `para distribución gratuita inmediata en el código postal ${targetZip}. Deben llegar a las ` +
         `familias en ${hoursLeft} hora${hoursLeft !== 1 ? 's' : ''}.` +
-        `${batch.requires_cold ? ' Refrigeración disponible.' : ''} No se requiere identificación.`;
+        `${requiresCold ? ' Refrigeración disponible.' : ''} No se requiere identificación.`;
 
       const { data: popup, error: popupErr } = await supabase
         .from('popup_events')
@@ -90,7 +95,7 @@ export async function POST(req: Request) {
       await supabase.from('analytics_events').insert({
         event_type: 'escalation_triggered',
         zip: targetZip,
-        quantity_lbs: batch.quantity_lbs,
+        quantity_lbs: quantityLbs,
         notes: `Force-escalated by operator: "${alert.title}"`,
         occurred_at: now.toISOString(),
       });
