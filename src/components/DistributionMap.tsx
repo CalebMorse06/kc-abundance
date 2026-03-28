@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
-import type { CircleLayer, LineLayer, SymbolLayer, MapRef, MapMouseEvent } from 'react-map-gl/mapbox';
+import type { MapRef, MapMouseEvent } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { Site, NeighborhoodScore } from '@/types';
 
@@ -101,13 +101,14 @@ export default function DistributionMap({
     if (!mapLoaded || !showFlows || flows.length === 0) return;
     const rawMap = mapRef.current?.getMap();
     if (!rawMap) return;
+    const map = rawMap;
 
     let step = 0;
     let timerId: ReturnType<typeof setTimeout>;
 
     function tick() {
-      if (!rawMap.getLayer('alloc-flows')) { timerId = setTimeout(tick, 100); return; }
-      rawMap.setPaintProperty('alloc-flows', 'line-dasharray', DASH_ARRAYS[step]);
+      if (!map.getLayer('alloc-flows')) { timerId = setTimeout(tick, 100); return; }
+      map.setPaintProperty('alloc-flows', 'line-dasharray', DASH_ARRAYS[step]);
       step = (step + 1) % DASH_ARRAYS.length;
       timerId = setTimeout(tick, 60);
     }
@@ -177,7 +178,8 @@ export default function DistributionMap({
   );
 
   // ── Layer styles ──────────────────────────────────────────────────────────────
-  const heatCircleLayer: CircleLayer = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const heatCircleLayer: any = {
     id: 'zip-need', type: 'circle',
     paint: {
       'circle-radius': 54, 'circle-blur': 0.9, 'circle-opacity': 0.28,
@@ -186,7 +188,8 @@ export default function DistributionMap({
     },
   };
 
-  const desertRingLayer: CircleLayer = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const desertRingLayer: any = {
     id: 'food-desert', type: 'circle',
     paint: {
       'circle-radius': 32,
@@ -198,13 +201,15 @@ export default function DistributionMap({
     },
   };
 
-  const flowLineLayer: LineLayer = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const flowLineLayer: any = {
     id: 'alloc-flows', type: 'line',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': '#F5832A', 'line-width': ['get', 'line_width'], 'line-opacity': 0.8 },
   };
 
-  const arrowSymbolLayer: SymbolLayer = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const arrowSymbolLayer: any = {
     id: 'alloc-arrows', type: 'symbol',
     layout: {
       'symbol-placement': 'line', 'symbol-spacing': 70,

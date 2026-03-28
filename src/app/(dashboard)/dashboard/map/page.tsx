@@ -78,7 +78,7 @@ export default function DistributionMapPage() {
     for (const s of scoresData ?? []) scoreMap.set(s.zip, s);
     setScores(scoreMap);
 
-    setAllocs((allocData ?? []) as AllocRow[]);
+    setAllocs((allocData ?? []) as unknown as AllocRow[]);
     setDesertRows((desertData ?? []) as DesertRow[]);
     setLastRefresh(new Date());
     setLoading(false);

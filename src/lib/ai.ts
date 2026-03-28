@@ -47,9 +47,10 @@ function buildAllocationFallback(
 ): string {
   const parts: string[] = [];
 
-  if (score?.need_score !== undefined) {
-    const tier = score.need_score >= 75 ? 'critical' : score.need_score >= 50 ? 'high' : 'moderate';
-    parts.push(`${site.name} (ZIP ${site.zip}) carries a ${tier} need score of ${score.need_score}/100`);
+  if (score?.need_score != null) {
+    const ns = score.need_score;
+    const tier = ns >= 75 ? 'critical' : ns >= 50 ? 'high' : 'moderate';
+    parts.push(`${site.name} (ZIP ${site.zip}) carries a ${tier} need score of ${ns}/100`);
     if (score.poverty_rate && score.food_insecurity_pct) {
       parts.push(`— ${score.poverty_rate}% poverty rate and ${score.food_insecurity_pct}% food insecurity.`);
     } else {
