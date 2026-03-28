@@ -5,12 +5,9 @@ import { Menu, LayoutDashboard } from 'lucide-react';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { AbundanceSpinner } from '@/components/AbundanceSpinner';
 import { LangProviderWrapper } from '@/components/LangProviderWrapper';
-import { getLangFromCookie } from '@/lib/i18n';
-
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
-  const langCookie = cookieStore.get('lang')?.value ?? null;
-  const isEs = getLangFromCookie(langCookie) === 'es';
+  const isEs = cookieStore.get('lang')?.value === 'es';
   return (
     <LangProviderWrapper>
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--background)' }}>

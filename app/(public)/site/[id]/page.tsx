@@ -5,7 +5,6 @@ import { cookies } from 'next/headers';
 import { MapPin, Clock, Phone, Bus, Snowflake, ArrowLeft, ExternalLink, Navigation } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { fetchTransit } from '@/lib/api/challenge';
-import { getLangFromCookie } from '@/lib/i18n';
 import { Badge } from '@/components/ui/badge';
 import { NeedScoreBadge } from '@/components/NeedScoreBadge';
 import { SpeakButton } from '@/components/SpeakButton';
@@ -70,8 +69,7 @@ function dayLabel(day: string): string {
 export default async function SiteDetailPage({ params }: PageProps) {
   const { id } = await params;
   const cookieStore = await cookies();
-  const lang = getLangFromCookie(cookieStore.toString());
-  const isEs = lang === 'es';
+  const isEs = cookieStore.get('lang')?.value === 'es';
   const supabase = await createClient();
 
   const { data: site } = await supabase.from('sites').select('*').eq('id', id).maybeSingle();
