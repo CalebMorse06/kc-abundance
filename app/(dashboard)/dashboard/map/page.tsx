@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Layers, Route, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Layers, Route, RefreshCw, AlertTriangle, Sparkles, ArrowRight, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Site, NeighborhoodScore } from '@/types';
-import type { AllocationFlow } from '@/components/DistributionMap';
+import type { AllocationFlow, ProposedFlow } from '@/components/DistributionMap';
 
 const DistributionMap = dynamic(() => import('@/components/DistributionMap'), {
   ssr: false,
@@ -51,6 +51,12 @@ export default function DistributionMapPage() {
   const [showDesert,  setShowDesert]  = useState(true);
   const [showGaps,    setShowGaps]    = useState(true);
 
+  const [showPlan,      setShowPlan]      = useState(false);
+  const [planLoading,   setPlanLoading]   = useState(false);
+  const [planSummary,   setPlanSummary]   = useState('');
+  const [planError,     setPlanError]     = useState<string | null>(null);
+  const [proposedFlows, setProposedFlows] = useState<ProposedFlow[]>([]);
+
   async function load() {
     setLoading(true);
     const supabase = createClient();
@@ -82,6 +88,45 @@ export default function DistributionMapPage() {
     setDesertRows((desertData ?? []) as DesertRow[]);
     setLastRefresh(new Date());
     setLoading(false);
+  }
+
+  async function generatePlan() {
+    setPlanLoading(true);
+    setPlanError(null);
+    try {
+      const res = await fetch('/api/ai/allocation-plan');
+      const data = await res.json() as {
+        success: boolean;
+        summary?: string;
+        transfers?: Array<{
+          from_site: { name: string; lat: number; lng: number };
+          to_site:   { name: string; lat: number; lng: number };
+          quantity_lbs: number;
+          reason: string;
+          priority: string;
+        }>;
+        error?: string;
+      };
+      if (data.success) {
+        const flows: ProposedFlow[] = (data.transfers ?? []).map(t => ({
+          from:         [t.from_site.lng, t.from_site.lat],
+          to:           [t.to_site.lng,   t.to_site.lat],
+          quantity_lbs: t.quantity_lbs,
+          from_name:    t.from_site.name,
+          to_name:      t.to_site.name,
+          reason:       t.reason,
+          priority:     t.priority,
+        }));
+        setProposedFlows(flows);
+        setPlanSummary(data.summary ?? '');
+      } else {
+        setPlanError(data.error ?? 'Failed to generate plan.');
+      }
+    } catch {
+      setPlanError('Network error — could not reach AI planner.');
+    } finally {
+      setPlanLoading(false);
+    }
   }
 
   // Initial load
@@ -166,6 +211,23 @@ export default function DistributionMapPage() {
           <ToggleBtn active={showFlows}   onClick={() => setShowFlows(v => !v)}   label="Flows" icon={<Route className="h-3.5 w-3.5" />} />
           <ToggleBtn active={showDesert}  onClick={() => setShowDesert(v => !v)}  label="Desert" icon={<span className="text-xs font-bold">D</span>} />
           <ToggleBtn active={showGaps}    onClick={() => setShowGaps(v => !v)}    label="Gaps" icon={<AlertTriangle className="h-3.5 w-3.5" />} />
+          <div className="w-px h-5 mx-1" style={{ background: 'rgba(255,255,255,0.12)' }} />
+          <button
+            onClick={() => {
+              const next = !showPlan;
+              setShowPlan(next);
+              if (next && proposedFlows.length === 0 && !planLoading) generatePlan();
+            }}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors"
+            style={showPlan
+              ? { background: '#06b6d4', borderColor: '#06b6d4', color: '#0f172a' }
+              : { borderColor: 'rgba(6,182,212,0.4)', color: '#06b6d4' }}
+          >
+            {planLoading
+              ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              : <Sparkles className="h-3.5 w-3.5" />}
+            <span className="hidden md:inline">AI Plan</span>
+          </button>
           <button
             onClick={load}
             disabled={loading}
@@ -191,6 +253,8 @@ export default function DistributionMapPage() {
           showFlows={showFlows}
           showDesert={showDesert}
           showGaps={showGaps}
+          proposedFlows={proposedFlows}
+          showProposed={showPlan}
         />
 
         {/* Empty state — no flows yet */}
@@ -210,6 +274,110 @@ export default function DistributionMapPage() {
             >
               Go to Supply Alerts
             </Link>
+          </div>
+        )}
+
+        {/* AI Allocation Plan panel */}
+        {showPlan && (
+          <div
+            className="absolute top-4 right-4 bottom-4 w-80 rounded-xl flex flex-col z-10 overflow-hidden"
+            style={{ background: 'rgba(10,14,30,0.96)', border: '1px solid rgba(6,182,212,0.25)', backdropFilter: 'blur(12px)' }}
+          >
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4" style={{ color: '#06b6d4' }} />
+                <span className="text-sm font-semibold text-white">AI Allocation Plan</span>
+              </div>
+              <button onClick={() => setShowPlan(false)} className="text-gray-400 hover:text-white transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Loading state */}
+            {planLoading && (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                <RefreshCw className="h-6 w-6 animate-spin" style={{ color: '#06b6d4' }} />
+                <p className="text-sm text-gray-300">Analyzing network…</p>
+                <p className="text-xs text-gray-500">AI is reviewing site capacity, need scores, and neighborhood data to propose optimal transfers.</p>
+              </div>
+            )}
+
+            {/* Error state */}
+            {!planLoading && planError && (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                <p className="text-sm text-red-400">{planError}</p>
+                <button
+                  onClick={generatePlan}
+                  className="mt-2 rounded-lg px-4 py-2 text-xs font-medium"
+                  style={{ background: 'rgba(6,182,212,0.15)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.3)' }}
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {/* Plan content */}
+            {!planLoading && !planError && proposedFlows.length > 0 && (
+              <>
+                {/* Summary */}
+                {planSummary && (
+                  <div className="px-4 py-3 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--dash-sidebar-text)' }}>{planSummary}</p>
+                  </div>
+                )}
+
+                {/* Transfer list */}
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                  {proposedFlows.map((f, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg p-3"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(6,182,212,0.15)' }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <PlanPriorityBadge priority={f.priority} />
+                        <span className="text-xs text-gray-400">{f.quantity_lbs.toLocaleString()} lbs</span>
+                      </div>
+                      <div className="flex items-start gap-1.5 mb-2">
+                        <span className="text-xs font-medium text-white leading-snug flex-1 truncate">{f.from_name}</span>
+                        <ArrowRight className="h-3 w-3 flex-shrink-0 mt-0.5" style={{ color: '#06b6d4' }} />
+                        <span className="text-xs font-medium text-white leading-snug flex-1 truncate text-right">{f.to_name}</span>
+                      </div>
+                      <p className="text-xs leading-relaxed" style={{ color: 'rgba(156,163,175,0.9)' }}>{f.reason}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Re-generate footer */}
+                <div className="px-4 py-3 flex-shrink-0 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <button
+                    onClick={generatePlan}
+                    disabled={planLoading}
+                    className="w-full rounded-lg py-2 text-xs font-medium flex items-center justify-center gap-2 transition-colors"
+                    style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.25)' }}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Re-generate Plan
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Empty — no plan yet */}
+            {!planLoading && !planError && proposedFlows.length === 0 && (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                <Sparkles className="h-7 w-7" style={{ color: '#06b6d4', opacity: 0.5 }} />
+                <p className="text-sm text-gray-300">No plan generated yet</p>
+                <button
+                  onClick={generatePlan}
+                  className="mt-1 rounded-lg px-4 py-2 text-xs font-medium"
+                  style={{ background: 'rgba(6,182,212,0.15)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.3)' }}
+                >
+                  Generate Plan
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -255,6 +423,18 @@ export default function DistributionMapPage() {
                 <span className="text-gray-300">Allocation route</span>
               </div>
               <p className="text-gray-500 mt-0.5" style={{ fontSize: 10 }}>Width = quantity · Click to inspect</p>
+            </LegendSection>
+          )}
+          {showPlan && proposedFlows.length > 0 && (
+            <LegendSection title="AI Plan">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
+                  <div className="w-5 h-px" style={{ background: '#06b6d4', borderTop: '2px dashed #06b6d4' }} />
+                  <span style={{ color: '#06b6d4', fontSize: 9 }}>▶</span>
+                </div>
+                <span className="text-gray-300">Proposed transfer</span>
+              </div>
+              <p className="text-gray-500 mt-0.5" style={{ fontSize: 10 }}>{proposedFlows.length} transfers · Click to inspect</p>
             </LegendSection>
           )}
           {showDesert && (
@@ -319,5 +499,22 @@ function LegendRow({ color, label }: { color: string; label: string }) {
       <div className="w-3 h-3 rounded-full opacity-80" style={{ backgroundColor: color }} />
       <span className="text-gray-300">{label}</span>
     </div>
+  );
+}
+
+function PlanPriorityBadge({ priority }: { priority: string }) {
+  const cfg: Record<string, { bg: string; label: string }> = {
+    critical: { bg: '#dc2626', label: 'CRITICAL' },
+    high:     { bg: '#ea580c', label: 'HIGH' },
+    medium:   { bg: '#ca8a04', label: 'MEDIUM' },
+  };
+  const { bg, label } = cfg[priority] ?? { bg: '#6b7280', label: priority.toUpperCase() };
+  return (
+    <span
+      className="rounded px-1.5 py-0.5 font-bold"
+      style={{ background: `${bg}28`, color: bg, fontSize: 9 }}
+    >
+      {label}
+    </span>
   );
 }

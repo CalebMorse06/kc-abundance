@@ -51,6 +51,16 @@ export interface AllocationFlow {
   dest_name: string;
 }
 
+export interface ProposedFlow {
+  from: [number, number];
+  to:   [number, number];
+  quantity_lbs: number;
+  from_name: string;
+  to_name: string;
+  reason: string;
+  priority: string;
+}
+
 interface Props {
   sites: Site[];
   scores: Map<string, NeighborhoodScore>;
@@ -61,20 +71,26 @@ interface Props {
   showFlows: boolean;
   showDesert: boolean;
   showGaps: boolean;
+  proposedFlows?: ProposedFlow[];
+  showProposed?: boolean;
 }
 
 type SiteWithCoords = Site & { lat: number; lng: number };
 
 type FlowPopup = { longitude: number; latitude: number; dest_name: string; quantity_lbs: number };
 
+type ProposedPopup = { longitude: number; latitude: number; from_name: string; to_name: string; quantity_lbs: number; reason: string; priority: string };
+
 export default function DistributionMap({
   sites, scores, flows, desertZips, gapZips,
   showHeatmap, showFlows, showDesert, showGaps,
+  proposedFlows = [], showProposed = false,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [sitePopup, setSitePopup] = useState<SiteWithCoords | null>(null);
   const [flowPopup, setFlowPopup] = useState<FlowPopup | null>(null);
+  const [proposedPopup, setProposedPopup] = useState<ProposedPopup | null>(null);
 
   const located = useMemo(
     () => sites.filter((s): s is SiteWithCoords => s.lat !== null && s.lng !== null),
@@ -118,15 +134,34 @@ export default function DistributionMap({
 
   // ── Click handler — flow lines ────────────────────────────────────────────────
   const handleMapClick = useCallback((e: MapMouseEvent) => {
-    if (!e.features || e.features.length === 0) { setFlowPopup(null); return; }
+    if (!e.features || e.features.length === 0) {
+      setFlowPopup(null);
+      setProposedPopup(null);
+      return;
+    }
     const f = e.features[0];
-    setFlowPopup({
-      longitude: e.lngLat.lng,
-      latitude:  e.lngLat.lat,
-      dest_name:    f.properties?.dest_name    ?? 'Unknown site',
-      quantity_lbs: f.properties?.quantity_lbs ?? 0,
-    });
-    setSitePopup(null);
+    if (f.layer?.id === 'proposed-flows') {
+      setProposedPopup({
+        longitude:    e.lngLat.lng,
+        latitude:     e.lngLat.lat,
+        from_name:    f.properties?.from_name    ?? 'Source',
+        to_name:      f.properties?.to_name      ?? 'Destination',
+        quantity_lbs: f.properties?.quantity_lbs ?? 0,
+        reason:       f.properties?.reason       ?? '',
+        priority:     f.properties?.priority     ?? 'medium',
+      });
+      setFlowPopup(null);
+      setSitePopup(null);
+    } else {
+      setFlowPopup({
+        longitude:    e.lngLat.lng,
+        latitude:     e.lngLat.lat,
+        dest_name:    f.properties?.dest_name    ?? 'Unknown site',
+        quantity_lbs: f.properties?.quantity_lbs ?? 0,
+      });
+      setProposedPopup(null);
+      setSitePopup(null);
+    }
   }, []);
 
   // ── Cursor pointer when hovering flows ───────────────────────────────────────
@@ -177,6 +212,23 @@ export default function DistributionMap({
     [gapZips]
   );
 
+  const proposedFlowsGeoJSON = useMemo(() => ({
+    type: 'FeatureCollection' as const,
+    features: proposedFlows.map((f, i) => ({
+      type: 'Feature' as const,
+      id: i + 10000,
+      geometry: { type: 'LineString' as const, coordinates: [f.from, f.to] },
+      properties: {
+        from_name:    f.from_name,
+        to_name:      f.to_name,
+        quantity_lbs: f.quantity_lbs,
+        reason:       f.reason,
+        priority:     f.priority,
+        line_width: Math.max(2, Math.min(6, Math.log((f.quantity_lbs / 100) + 1) * 2)),
+      },
+    })),
+  }), [proposedFlows]);
+
   // ── Layer styles ──────────────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const heatCircleLayer: any = {
@@ -219,6 +271,29 @@ export default function DistributionMap({
     paint: { 'text-color': '#F5832A', 'text-opacity': 0.9 },
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const proposedFlowLineLayer: any = {
+    id: 'proposed-flows', type: 'line',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#06b6d4',
+      'line-width': ['get', 'line_width'],
+      'line-opacity': 0.8,
+      'line-dasharray': [5, 3],
+    },
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const proposedArrowLayer: any = {
+    id: 'proposed-arrows', type: 'symbol',
+    layout: {
+      'symbol-placement': 'line', 'symbol-spacing': 80,
+      'text-field': '▶', 'text-size': 10,
+      'text-allow-overlap': true, 'text-ignore-placement': true, 'text-keep-upright': false,
+    },
+    paint: { 'text-color': '#06b6d4', 'text-opacity': 0.85 },
+  };
+
   return (
     <Map
       ref={mapRef}
@@ -227,7 +302,10 @@ export default function DistributionMap({
       style={{ width: '100%', height: '100%' }}
       mapStyle="mapbox://styles/mapbox/dark-v11"
       reuseMaps
-      interactiveLayerIds={showFlows && flows.length > 0 ? ['alloc-flows'] : []}
+      interactiveLayerIds={[
+        ...(showFlows && flows.length > 0 ? ['alloc-flows'] : []),
+        ...(showProposed && proposedFlows.length > 0 ? ['proposed-flows'] : []),
+      ]}
       onClick={handleMapClick}
       onMouseMove={handleMouseMove}
       onLoad={() => setMapLoaded(true)}
@@ -253,6 +331,14 @@ export default function DistributionMap({
         <Source id="flows-src" type="geojson" data={flowsGeoJSON}>
           <Layer {...flowLineLayer} />
           <Layer {...arrowSymbolLayer} />
+        </Source>
+      )}
+
+      {/* Proposed allocation flow lines */}
+      {showProposed && proposedFlows.length > 0 && (
+        <Source id="proposed-flows-src" type="geojson" data={proposedFlowsGeoJSON}>
+          <Layer {...proposedFlowLineLayer} />
+          <Layer {...proposedArrowLayer} />
         </Source>
       )}
 
@@ -319,6 +405,26 @@ export default function DistributionMap({
               <div className="w-3 h-0.5 rounded" style={{ background: '#F5832A' }} />
               <span className="text-xs" style={{ color: '#F5832A' }}>Active flow</span>
             </div>
+          </div>
+        </Popup>
+      )}
+
+      {/* Proposed flow popup */}
+      {proposedPopup && (
+        <Popup longitude={proposedPopup.longitude} latitude={proposedPopup.latitude} anchor="bottom"
+          onClose={() => setProposedPopup(null)} closeOnClick={false} maxWidth="240px">
+          <div className="p-2 space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-0.5 rounded" style={{ background: '#06b6d4', borderStyle: 'dashed' }} />
+              <span className="text-xs font-semibold" style={{ color: '#06b6d4' }}>Proposed transfer</span>
+            </div>
+            <p className="text-xs font-medium text-gray-900 leading-snug">
+              {proposedPopup.from_name} → {proposedPopup.to_name}
+            </p>
+            <p className="text-xs text-gray-500">{proposedPopup.quantity_lbs.toLocaleString()} lbs proposed</p>
+            {proposedPopup.reason && (
+              <p className="text-xs text-gray-600 leading-relaxed">{proposedPopup.reason}</p>
+            )}
           </div>
         </Popup>
       )}
